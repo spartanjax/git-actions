@@ -1,0 +1,35 @@
+name: Mt Eden Sun Times
+
+on:
+  schedule:
+    # 5:00pm Auckland during NZDT (UTC+13, roughly Sep-Apr)
+    - cron: "0 4 * * *"
+    # 5:00pm Auckland during NZST (UTC+12, roughly Apr-Sep)
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Send now, even if it isn't 5pm in Auckland"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Send sunset/sunrise notification
+        env:
+          NTFY_TOPIC: mt-eden-sunsets
+          FORCE_RUN: ${{ inputs.force && '1' || '0' }}
+        run: python scripts/sunset_notify.py
