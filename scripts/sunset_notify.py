@@ -52,13 +52,6 @@ def pretty(dt: datetime) -> str:
 
 def main() -> None:
     now = datetime.now(TZ)
-    force = os.environ.get("FORCE_RUN") == "1"
-
-    # Only the cron entry matching Auckland's 5pm should send. The other
-    # (DST) entry lands on 4pm or 6pm and stays quiet. Manual runs can force.
-    if not force and now.hour != 17:
-        print(f"Skipping: Auckland time is {now:%H:%M}, not 5pm.")
-        return
 
     today = now.strftime("%Y-%m-%d")
     tomorrow = (now + timedelta(days=1)).strftime("%Y-%m-%d")

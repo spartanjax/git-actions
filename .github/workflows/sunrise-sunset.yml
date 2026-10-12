@@ -2,16 +2,12 @@ name: Mt Eden Sun Times
 
 on:
   schedule:
-    # 5:00pm Auckland during NZDT (UTC+13, roughly Sep-Apr)
-    - cron: "0 4 * * *"
-    # 5:00pm Auckland during NZST (UTC+12, roughly Apr-Sep)
-    - cron: "0 5 * * *"
+    # 4:58pm Auckland every day. The `timezone` field makes GitHub handle
+    # daylight saving automatically, and minute :58 avoids the top-of-hour
+    # load spike where scheduled runs are most likely to be delayed or dropped.
+    - cron: "58 16 * * *"
+      timezone: "Pacific/Auckland"
   workflow_dispatch:
-    inputs:
-      force:
-        description: "Send now, even if it isn't 5pm in Auckland"
-        type: boolean
-        default: true
 
 permissions:
   contents: read
@@ -31,5 +27,4 @@ jobs:
       - name: Send sunset/sunrise notification
         env:
           NTFY_TOPIC: mt-eden-sunsets
-          FORCE_RUN: ${{ inputs.force && '1' || '0' }}
         run: python scripts/sunset_notify.py
