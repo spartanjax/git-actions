@@ -1,12 +1,11 @@
 name: Mt Eden Sun Times
 
 on:
-  schedule:
-    # 4:58pm Auckland every day. The `timezone` field makes GitHub handle
-    # daylight saving automatically, and minute :58 avoids the top-of-hour
-    # load spike where scheduled runs are most likely to be delayed or dropped.
-    - cron: "58 16 * * *"
-      timezone: "Pacific/Auckland"
+  # Fired by cron-job.org at 17:00 Pacific/Auckland (that service handles DST).
+  # GitHub's own `schedule:` trigger proved unreliable here, so timing is owned
+  # externally; see README.md.
+  repository_dispatch:
+    types: [sunset-notify]
   workflow_dispatch:
 
 permissions:
