@@ -142,6 +142,18 @@ def sunset_outlook(low: int, mid: int, high: int) -> str:
     return "clear — a simple, clean sunset"
 
 
+def cloud_score(low: int, mid: int, high: int) -> int:
+    """Single 0-100 rating of how good the sunset is likely to be.
+
+    A clear horizon (little low cloud) matters most; broken mid/high cloud
+    overhead is what catches the light, so it peaks around 40% cover.
+    """
+    horizon = 100 - low
+    upper = max(mid, high)
+    colour = max(0.0, 100 - abs(upper - 40) * 100 / 60)
+    return round(0.6 * horizon + 0.4 * colour)
+
+
 def weather_tag(code: int) -> str:
     """Map a WMO weather code to an ntfy tag category."""
     if code in (0, 1):
@@ -183,13 +195,11 @@ def main() -> None:
         )
         message = "\n".join(
             [
-                f"Expected {round(w['temperature'])}°C and {description} {emoji}",
-                f"Feels like {round(w['apparent'])}°C · "
-                f"{round(w['precip_probability'])}% chance of rain",
-                f"Cloud: low {round(w['cloud_low'])}% · "
-                f"mid {round(w['cloud_mid'])}% · "
-                f"high {round(w['cloud_high'])}%",
-                f"Sunset outlook: {sunset_outlook(w['cloud_low'], w['cloud_mid'], w['cloud_high'])}",
+                f"{round(w['temperature'])}°C "
+                f"(feels {round(w['apparent'])}°C) and {description} {emoji}",
+                f"{round(w['precip_probability'])}% chance of rain · "
+                f"cloud score {cloud_score(w['cloud_low'], w['cloud_mid'], w['cloud_high'])}/100",
+                f"{sunset_outlook(w['cloud_low'], w['cloud_mid'], w['cloud_high'])}",
             ]
         )
         tag = weather_tag(w["weather_code"])
