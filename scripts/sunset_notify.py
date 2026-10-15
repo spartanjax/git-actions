@@ -75,13 +75,17 @@ def fetch_sun_times(date: str) -> dict:
     return data["results"]
 
 
-def fetch_weather(date: str, sunset: datetime) -> tuple[float, int]:
-    """Return (temperature_c, weather_code) for the hour nearest sunset."""
+def fetch_weather(date: str, sunset: datetime) -> dict:
+    """Return the forecast at the hour nearest sunset as a dict."""
     params = urllib.parse.urlencode(
         {
             "latitude": LAT,
             "longitude": LNG,
-            "hourly": "temperature_2m,weather_code",
+            "hourly": (
+                "temperature_2m,apparent_temperature,weather_code,"
+                "precipitation_probability,"
+                "cloud_cover_low,cloud_cover_mid,cloud_cover_high"
+            ),
             "timezone": str(TZ),
             "start_date": date,
             "end_date": date,
@@ -95,8 +99,6 @@ def fetch_weather(date: str, sunset: datetime) -> tuple[float, int]:
 
     hourly = data.get("hourly", {})
     times = hourly.get("time") or []
-    temps = hourly.get("temperature_2m") or []
-    codes = hourly.get("weather_code") or []
     if not times:
         raise RuntimeError(f"Unexpected weather response: {data}")
 
@@ -107,7 +109,37 @@ def fetch_weather(date: str, sunset: datetime) -> tuple[float, int]:
             datetime.fromisoformat(times[i]).replace(tzinfo=TZ) - sunset
         ),
     )
-    return temps[best], codes[best]
+
+    def at(key: str):
+        return (hourly.get(key) or [])[best]
+
+    return {
+        "temperature": at("temperature_2m"),
+        "apparent": at("apparent_temperature"),
+        "weather_code": at("weather_code"),
+        "precip_probability": at("precipitation_probability"),
+        "cloud_low": at("cloud_cover_low"),
+        "cloud_mid": at("cloud_cover_mid"),
+        "cloud_high": at("cloud_cover_high"),
+    }
+
+
+def sunset_outlook(low: int, mid: int, high: int) -> str:
+    """Short verdict on how colourful tonight's sunset is likely to be.
+
+    Low cloud near the horizon blocks the sun; broken mid/high cloud overhead
+    is what catches the light and produces colour.
+    """
+    upper = max(mid, high)
+    if low >= 70:
+        return "poor — thick low cloud likely hides the sun"
+    if low >= 40:
+        return "mixed — some low cloud may block the horizon"
+    if upper >= 70:
+        return "muted — heavy cloud overhead, little colour"
+    if upper >= 20:
+        return "promising — broken cloud should catch the light"
+    return "clear — a simple, clean sunset"
 
 
 def weather_tag(code: int) -> str:
@@ -145,18 +177,27 @@ def main() -> None:
     sunset = to_auckland(fetch_sun_times(today)["sunset"])
 
     try:
-        temp, code = fetch_weather(today, sunset)
+        w = fetch_weather(today, sunset)
         emoji, description = WEATHER_CODES.get(
-            code, (NEUTRAL_EMOJI, "mixed conditions")
+            w["weather_code"], (NEUTRAL_EMOJI, "mixed conditions")
         )
-        message = f"{emoji} Expected {description} around sunset, {round(temp)}°C."
-        tag = weather_tag(code)
+        message = "\n".join(
+            [
+                f"Expected {round(w['temperature'])}°C and {description} {emoji}",
+                f"Feels like {round(w['apparent'])}°C · "
+                f"{round(w['precip_probability'])}% chance of rain",
+                f"Cloud: low {round(w['cloud_low'])}% · "
+                f"mid {round(w['cloud_mid'])}% · "
+                f"high {round(w['cloud_high'])}%",
+                f"Sunset outlook: {sunset_outlook(w['cloud_low'], w['cloud_mid'], w['cloud_high'])}",
+            ]
+        )
+        tag = weather_tag(w["weather_code"])
     except Exception:
-        emoji = NEUTRAL_EMOJI
-        message = f"{emoji} Weather data unavailable for sunset."
+        message = f"Expected weather unavailable for sunset {NEUTRAL_EMOJI}"
         tag = "sunset"
 
-    title = f"{SUNSET_EMOJI} {emoji} Sunset at {pretty(sunset)}"
+    title = f"{SUNSET_EMOJI} Sunset at {pretty(sunset)}"
 
     payload = json.dumps(
         {
