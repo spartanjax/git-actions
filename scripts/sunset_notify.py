@@ -154,23 +154,6 @@ def cloud_score(low: int, mid: int, high: int) -> int:
     return round(0.6 * horizon + 0.4 * colour)
 
 
-def weather_tag(code: int) -> str:
-    """Map a WMO weather code to an ntfy tag category."""
-    if code in (0, 1):
-        return "sunny"
-    if code in (2, 3):
-        return "cloudy"
-    if code in (45, 48):
-        return "fog"
-    if 51 <= code <= 67 or 80 <= code <= 82:
-        return "rain"
-    if 71 <= code <= 77 or 85 <= code <= 86:
-        return "snow"
-    if code >= 95:
-        return "storm"
-    return "sunny"
-
-
 def to_auckland(iso_timestamp: str) -> datetime:
     """Convert an ISO 8601 UTC timestamp to Auckland local time."""
     return datetime.fromisoformat(iso_timestamp).astimezone(TZ)
@@ -196,16 +179,14 @@ def main() -> None:
         message = "\n".join(
             [
                 f"{round(w['temperature'])}°C "
-                f"(feels {round(w['apparent'])}°C) and {description} {emoji}",
-                f"{round(w['precip_probability'])}% chance of rain · "
-                f"cloud score {cloud_score(w['cloud_low'], w['cloud_mid'], w['cloud_high'])}/100",
+                f"({round(w['apparent'])}°C) and {description} {emoji}",
+                f"{round(w['precip_probability'])}% COR · "
+                f"CR {cloud_score(w['cloud_low'], w['cloud_mid'], w['cloud_high'])}%",
                 f"{sunset_outlook(w['cloud_low'], w['cloud_mid'], w['cloud_high'])}",
             ]
         )
-        tag = weather_tag(w["weather_code"])
     except Exception:
         message = f"Expected weather unavailable for sunset {NEUTRAL_EMOJI}"
-        tag = "sunset"
 
     title = f"{SUNSET_EMOJI} Sunset at {pretty(sunset)}"
 
@@ -214,7 +195,6 @@ def main() -> None:
             "topic": NTFY_TOPIC,
             "title": title,
             "message": message,
-            "tags": [tag],
         },
         ensure_ascii=False,
     ).encode("utf-8")
