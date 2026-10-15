@@ -124,24 +124,6 @@ def fetch_weather(date: str, sunset: datetime) -> dict:
     }
 
 
-def sunset_outlook(low: int, mid: int, high: int) -> str:
-    """Short verdict on how colourful tonight's sunset is likely to be.
-
-    Low cloud near the horizon blocks the sun; broken mid/high cloud overhead
-    is what catches the light and produces colour.
-    """
-    upper = max(mid, high)
-    if low >= 70:
-        return "poor — thick low cloud likely hides the sun"
-    if low >= 40:
-        return "mixed — some low cloud may block the horizon"
-    if upper >= 70:
-        return "muted — heavy cloud overhead, little colour"
-    if upper >= 20:
-        return "promising — broken cloud should catch the light"
-    return "clear — a simple, clean sunset"
-
-
 def cloud_score(low: int, mid: int, high: int) -> int:
     """Single 0-100 rating of how good the sunset is likely to be.
 
@@ -178,11 +160,10 @@ def main() -> None:
         )
         message = "\n".join(
             [
-                f"{round(w['temperature'])}°C "
-                f"({round(w['apparent'])}°C) and {description} {emoji}",
+                f"{round(w['temperature'])}°C, {description} {emoji}",
                 f"{round(w['precip_probability'])}% COR · "
-                f"CR {cloud_score(w['cloud_low'], w['cloud_mid'], w['cloud_high'])}%",
-                f"{sunset_outlook(w['cloud_low'], w['cloud_mid'], w['cloud_high'])}",
+                f"CR {cloud_score(w['cloud_low'], w['cloud_mid'], w['cloud_high'])}% · "
+                f"~{round(w['apparent'])}°C",
             ]
         )
     except Exception:
